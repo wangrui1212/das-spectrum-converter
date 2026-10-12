@@ -1,0 +1,605 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Offline DAS single-frequency spectrum and self-noise converter">
+    <title>DAS Spectrum Converter</title>
+    <style>
+:root { --ink:#152238; --muted:#66758c; --line:#d9e1eb; --surface:#fff; --wash:#f4f7fb; --navy:#0b1f3a; --blue:#2676d2; --cyan:#17b6c9; --gold:#e9a827; --danger:#b42318; --shadow:0 16px 45px rgba(25,44,73,.09); font-family:Inter,"Segoe UI",Arial,"Microsoft YaHei",sans-serif; color:var(--ink); background:#edf2f8; }
+* { box-sizing:border-box; } body { margin:0; min-width:320px; } button, input, select { font:inherit; } button { cursor:pointer; } .app-shell { max-width:1480px; margin:0 auto; padding:32px 26px 48px; }
+.topbar { display:flex; align-items:flex-start; justify-content:space-between; gap:24px; } h1,h2,h3,p { margin:0; } h1 { margin-top:3px; font-size:clamp(1.65rem,3vw,2.35rem); letter-spacing:-.035em; } h2 { font-size:1.13rem; letter-spacing:-.015em; } h3 { font-size:.9rem; } .eyebrow { color:var(--blue); font-size:.7rem; font-weight:800; letter-spacing:.14em; } .subtitle,.scope-note { color:var(--muted); margin-top:7px; } .scope-note { font-size:.83rem; padding:11px 14px; margin-top:22px; border-left:3px solid var(--cyan); background:#e9f7f9; border-radius:0 7px 7px 0; }
+.topbar-actions { display:flex; align-items:center; gap:10px; } select,input { width:100%; min-height:39px; border:1px solid #c8d3e0; border-radius:7px; padding:8px 10px; color:var(--ink); background:#fff; outline:none; } select:focus,input:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(38,118,210,.14); } .language-control select { width:auto; min-height:36px; } .button { border:0; border-radius:7px; padding:9px 13px; font-weight:700; font-size:.82rem; } .button.secondary { color:var(--navy); background:#e3eaf4; } .button.secondary:hover { background:#d4e0ef; }
+.status { min-height:0; margin-top:12px; color:var(--danger); font-size:.86rem; font-weight:650; } .status:not(:empty) { padding:10px 13px; border:1px solid #f2c5bf; background:#fff1f0; border-radius:7px; } .status[data-kind="success"] { color:#126c55; border-color:#a9dfcf; background:#ecfbf5; }
+.workspace { display:grid; grid-template-columns:minmax(330px,.9fr) minmax(480px,1.25fr); gap:24px; margin-top:18px; align-items:start; } .controls-panel { display:grid; gap:14px; } .panel-card,.results-panel { background:var(--surface); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow); } .panel-card { padding:17px; } .accent-card { border-top:4px solid var(--blue); } .card-heading,.results-heading { display:flex; align-items:center; gap:10px; margin-bottom:16px; } .step { display:inline-grid; place-items:center; width:24px; height:24px; border-radius:50%; background:#e4eefb; color:var(--blue); font-size:.72rem; font-weight:800; }
+.field-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:13px; } label { display:grid; gap:6px; color:#44536a; font-size:.78rem; font-weight:700; } .primary-input { grid-column:span 2; } .input-with-unit { position:relative; } .input-with-unit input { padding-right:68px; } .input-with-unit output { position:absolute; right:10px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:.75rem; font-weight:700; pointer-events:none; } .primary-input input { min-height:48px; font-size:1.14rem; font-weight:700; } .primary-input output { font-size:.87rem; }
+details > summary { display:flex; align-items:center; gap:9px; cursor:pointer; list-style:none; font-size:.94rem; font-weight:800; } details > summary::-webkit-details-marker { display:none; } details > summary::after { content:'⌄'; margin-left:auto; color:var(--muted); font-size:1rem; } details[open] > summary::after { transform:rotate(180deg); } .summary-value { margin-left:auto; margin-right:5px; color:var(--blue); font-size:.72rem; font-weight:700; } .details-body { border-top:1px solid #e7edf4; margin-top:14px; padding-top:14px; } .computed-field { min-height:39px; align-self:end; border:1px solid #dce5ef; border-radius:7px; padding:7px 9px; display:grid; grid-template-columns:auto 1fr auto; gap:6px; align-items:baseline; background:var(--wash); font-size:.76rem; color:var(--muted); } .computed-field strong { color:var(--ink); text-align:right; font-size:.84rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .computed-field small { font-size:.68rem; } .wide { grid-column:span 2; }
+.mode-toggle { grid-column:span 2; display:flex; gap:14px; align-items:center; margin:0; padding:8px 10px; border:1px solid #dce5ef; border-radius:7px; } .mode-toggle legend { padding:0 4px; color:#44536a; font-size:.78rem; font-weight:700; } .mode-toggle label { display:flex; align-items:center; gap:5px; font-weight:600; } .mode-toggle input { width:auto; min-height:auto; accent-color:var(--blue); }
+.results-panel { padding:21px; min-height:670px; } .results-heading { justify-content:space-between; } .results-heading h2 { margin-top:3px; font-size:1.35rem; } .result-actions { display:flex; align-items:center; gap:10px; } .display-switch { display:flex; align-items:center; gap:3px; padding:4px; color:var(--muted); border:1px solid var(--line); border-radius:8px; background:#f7f9fc; font-size:.72rem; font-weight:700; } .display-switch > span { padding:0 4px; } .display-switch button { border:0; border-radius:5px; padding:5px 7px; color:var(--muted); background:transparent; font-size:.72rem; font-weight:800; } .display-switch button[aria-pressed="true"] { color:#fff; background:var(--blue); } .result-columns { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; } .result-column { border:1px solid #d9e4f1; border-radius:10px; overflow:hidden; } .column-title { display:flex; align-items:center; justify-content:space-between; padding:12px 13px; color:#fff; background:var(--navy); } .column-title small { opacity:.76; font-weight:600; } .result-row { display:grid; grid-template-columns:1fr auto; gap:8px; padding:13px; border-top:1px solid #e4ebf3; } .result-row.asd { background:linear-gradient(90deg,#e9f8f8,#f9fdfd); border-left:3px solid var(--cyan); padding-left:10px; } .result-name { font-size:.78rem; font-weight:800; color:#45556d; } .result-name small { display:block; color:#8592a5; font-weight:600; margin-top:3px; } .result-value { text-align:right; min-width:0; } .result-value strong { display:block; font-family:"Cascadia Mono",Consolas,monospace; font-size:.91rem; overflow-wrap:anywhere; } .result-value small { color:var(--muted); font-size:.69rem; } .copy-result { grid-column:2; align-self:end; padding:2px 0; border:0; color:var(--blue); background:transparent; font-size:.7rem; font-weight:800; }
+.summary-card,.formula-card { margin-top:16px; border:1px solid #dce5ef; border-radius:9px; padding:14px; background:var(--wash); } .summary-content { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 16px; margin-top:10px; color:#4a5a70; font-size:.76rem; } .summary-content span:nth-child(even) { color:var(--ink); font-family:"Cascadia Mono",Consolas,monospace; text-align:right; } .formula-card { background:#fff; } .formula-card summary { font-size:.86rem; } .formula-content { margin-top:12px; padding-top:11px; border-top:1px solid #e4ebf3; color:#4a5a70; font-size:.79rem; line-height:1.65; } .formula-content p + p { margin-top:7px; }
+.hidden { display:none !important; } .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+@media (max-width:900px) { .workspace { grid-template-columns:1fr; } .results-panel { min-height:0; } } @media (max-width:560px) { .app-shell { padding:20px 14px 28px; } .topbar { align-items:stretch; flex-direction:column; } .topbar-actions { justify-content:space-between; } .results-heading,.result-actions { align-items:flex-start; flex-direction:column; } .field-grid,.result-columns { grid-template-columns:1fr; } .primary-input,.wide,.mode-toggle { grid-column:span 1; } .mode-toggle { align-items:flex-start; flex-direction:column; gap:7px; } .summary-content { grid-template-columns:1fr; gap:3px; } .summary-content span:nth-child(even) { text-align:left; margin-bottom:6px; } }
+
+</style>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">DAS TOOLKIT · V1.0</p>
+          <h1>DAS Spectrum Converter</h1>
+          <p class="subtitle" data-i18n="subtitle">单频点频谱与自噪声换算</p>
+        </div>
+        <div class="topbar-actions">
+          <label class="language-control"><span class="sr-only" data-i18n="language">语言</span><select id="language" aria-label="Language"><option value="zh">中文</option><option value="en">English</option></select></label>
+          <button id="reset" class="button secondary" type="button" data-i18n="reset">重置默认参数</button>
+        </div>
+      </header>
+
+      <p class="scope-note" data-i18n="scopeNote">适用于已正确归一化的实数信号单边普通正频率内部频点。</p>
+      <div id="status" class="status" role="status" aria-live="polite"></div>
+
+      <div class="workspace">
+        <section class="controls-panel" aria-label="Calculation controls">
+          <section class="panel-card accent-card">
+            <div class="card-heading"><span class="step">01</span><h2 data-i18n="spectrumInput">频谱输入</h2></div>
+            <div class="field-grid">
+              <label><span data-i18n="inputSpectrumType">输入频谱类型</span><select id="spectrumType"><option value="peak">Magnitude Peak</option><option value="rms">Magnitude RMS</option><option value="psd">Power Spectral Density</option><option value="asd">Amplitude Spectral Density</option></select></label>
+              <label><span data-i18n="inputQuantity">输入物理量</span><select id="physicalQuantity"><option value="phase">Phase · rad</option><option value="strain">Strain · pε</option></select></label>
+              <label class="primary-input"><span data-i18n="inputValue">输入数值</span><div class="input-with-unit"><input id="inputValue" type="text" inputmode="decimal" autocomplete="off" value="10"><output id="inputUnit">pε</output></div></label>
+              <label><span data-i18n="inputDisplay">输入表示方式</span><select id="representation"><option value="linear">Linear</option><option value="db">dB</option></select></label>
+              <label><span data-i18n="targetFrequency">目标频率</span><div class="input-with-unit"><input id="frequency" type="text" inputmode="decimal" placeholder="Optional"><output>Hz</output></div></label>
+            </div>
+          </section>
+
+          <details class="panel-card" open>
+            <summary><span class="step">02</span><span data-i18n="spectrumParameters">频谱参数</span><span class="summary-value" id="analysisSummary"></span></summary>
+            <div class="details-body field-grid">
+              <label><span data-i18n="sampleRate">采样率 f<sub>s</sub></span><div class="input-with-unit"><input id="sampleRate" type="text" inputmode="decimal" value="5000"><output>Hz</output></div></label>
+              <label><span data-i18n="fftPoints">FFT 原始数据点数 N</span><div class="input-with-unit"><input id="fftPoints" type="text" inputmode="numeric" value="5000"><output data-i18n="points">点</output></div></label>
+              <label><span data-i18n="window">窗函数</span><select id="window"><option value="rectangular">Rectangular</option><option value="hann">Hann</option><option value="hamming">Hamming</option><option value="blackman">Blackman</option><option value="blackmanHarris" selected>Blackman-Harris (4-term)</option><option value="custom">Custom ENBW</option></select></label>
+              <label id="customEnbwField"><span data-i18n="customEnbw">自定义 ENBW</span><div class="input-with-unit"><input id="customEnbw" type="text" inputmode="decimal" value="1"><output>Hz</output></div></label>
+              <div class="computed-field"><span>Δf</span><strong id="deltaF">—</strong><small>Hz</small></div>
+              <div class="computed-field"><span>ENBW</span><strong id="enbw">—</strong><small>Hz</small></div>
+            </div>
+          </details>
+
+          <details class="panel-card" open>
+            <summary><span class="step">03</span><span data-i18n="dasParameters">DAS 参数</span><span class="summary-value" id="kSummary"></span></summary>
+            <div class="details-body field-grid">
+              <fieldset class="mode-toggle"><legend data-i18n="conversionMode">转换模式</legend><label><input type="radio" name="dasMode" value="theory" checked><span data-i18n="theoryMode">理论参数计算</span></label><label><input type="radio" name="dasMode" value="manual"><span data-i18n="manualMode">手动标定系数</span></label></fieldset>
+              <label><span data-i18n="wavelength">工作波长 λ</span><div class="input-with-unit"><input id="wavelength" type="text" inputmode="decimal" value="1550"><output>nm</output></div></label>
+              <label><span data-i18n="refractiveIndex">有效折射率 n</span><input id="refractiveIndex" type="text" inputmode="decimal" value="1.4862"></label>
+              <label><span data-i18n="gaugeLength">解调标距 G</span><div class="input-with-unit"><input id="gaugeLength" type="text" inputmode="decimal" value="10"><output>m</output></div></label>
+              <label><span data-i18n="photoelastic">光弹性系数 ξ</span><input id="photoelasticCoefficient" type="text" inputmode="decimal" value="0.78"></label>
+              <label id="manualKField"><span data-i18n="manualK">手动 K</span><div class="input-with-unit"><input id="manualK" type="text" inputmode="decimal" value="10000"><output>pε/rad</output></div></label>
+              <div class="computed-field wide"><span data-i18n="phaseStrainCoefficient">相位—应变系数 K</span><strong id="phaseStrainK">—</strong><small>pε/rad</small></div>
+            </div>
+          </details>
+        </section>
+
+        <section class="results-panel" aria-label="Calculation results">
+          <div class="results-heading"><div><p class="eyebrow" data-i18n="liveResults">LIVE RESULTS</p><h2 data-i18n="conversionResults">实时换算结果</h2></div><div class="result-actions"><div class="display-switch" role="group" data-i18n-label="resultDisplay" aria-label="结果主显示"><span data-i18n="resultDisplay">结果主显示</span><button type="button" data-result-display="linear" aria-pressed="true" data-i18n="linear">Linear</button><button type="button" data-result-display="db" aria-pressed="false" data-i18n="db">dB</button></div><button id="copyAll" class="button secondary" type="button" data-i18n="copyAll">复制全部结果</button></div></div>
+          <div id="results" class="result-columns"></div>
+          <section class="summary-card"><h3 data-i18n="parameterSummary">参数摘要</h3><div id="parameterSummary" class="summary-content"></div></section>
+          <details class="formula-card">
+            <summary data-i18n="formulaTitle">计算公式与约定</summary>
+            <div class="formula-content">
+              <p><strong>Δf = f<sub>s</sub> / N</strong></p>
+              <p><strong>B<sub>ENBW</sub> = f<sub>s</sub> · Σw² / (Σw)²</strong></p>
+              <p><strong>PSD = A<sub>RMS</sub>² / B<sub>ENBW</sub>, &nbsp; ASD = √PSD, &nbsp; A<sub>Peak</sub> = √2 · A<sub>RMS</sub></strong></p>
+              <p><strong>K<sub>φ→pε</sub> = λ / (4πnGξ) · 10¹²</strong></p>
+              <p data-i18n="formulaNote">以线性相位 PSD（rad²/Hz）作为内部中间量。PSD 的物理量转换使用 K²；幅度与 ASD 使用 K。</p>
+            </div>
+          </details>
+        </section>
+      </div>
+    </main>
+    <script>
+(function () {
+  function showStartupError(message) {
+    var status = document.getElementById('status');
+    if (status) {
+      status.textContent = '启动错误：' + message + '。请使用 Chrome/Edge 60 或更高版本，或将此信息发给维护人员。';
+      status.setAttribute('data-kind', 'error');
+    }
+  }
+  window.onerror = function (message) { showStartupError(message); return false; };
+}());
+</script>
+    <script>
+const DEFAULTS = Object.freeze({
+  input: {
+    spectrumType: 'peak',
+    physicalQuantity: 'strain',
+    value: '10',
+    representation: 'linear',
+    frequency: '',
+  },
+  analysis: {
+    sampleRate: '5000',
+    fftPoints: '5000',
+    window: 'blackmanHarris',
+    customEnbw: '1',
+  },
+  das: {
+    mode: 'theory',
+    wavelength: '1550',
+    refractiveIndex: '1.4862',
+    gaugeLength: '10',
+    photoelasticCoefficient: '0.78',
+    manualK: '10000',
+  },
+});
+
+const WINDOW_NAMES = Object.freeze({
+  rectangular: 'Rectangular',
+  hann: 'Hann',
+  hamming: 'Hamming',
+  blackman: 'Blackman',
+  blackmanHarris: 'Blackman-Harris (4-term)',
+  custom: 'Custom ENBW',
+});
+
+const SPECTRUM_TYPES = new Set(['peak', 'rms', 'psd', 'asd']);
+const QUANTITIES = new Set(['phase', 'strain']);
+const REPRESENTATIONS = new Set(['linear', 'db']);
+
+function cloneDefaults() {
+  return JSON.parse(JSON.stringify(DEFAULTS));
+}
+
+function numberValue(value) {
+  if (typeof value === 'number') return value;
+  if (typeof value !== 'string' || value.trim() === '') return NaN;
+  return Number(value);
+}
+
+function isPositiveFinite(value) {
+  return Number.isFinite(value) && value > 0;
+}
+
+function getWindowValue(windowName, index, points) {
+  const angle = (2 * Math.PI * index) / points;
+  switch (windowName) {
+    case 'rectangular': return 1;
+    case 'hann': return 0.5 - 0.5 * Math.cos(angle);
+    case 'hamming': return 0.54 - 0.46 * Math.cos(angle);
+    case 'blackman': return 0.42 - 0.5 * Math.cos(angle) + 0.08 * Math.cos(2 * angle);
+    case 'blackmanHarris':
+      return 0.35875 - 0.48829 * Math.cos(angle) + 0.14128 * Math.cos(2 * angle) - 0.01168 * Math.cos(3 * angle);
+    default: throw new Error(`Unsupported window: ${windowName}`);
+  }
+}
+
+function calculateEnbw(sampleRate, fftPoints, windowName, customEnbw) {
+  if (windowName === 'custom') return customEnbw;
+  let sum = 0;
+  let squaredSum = 0;
+  for (let index = 0; index < fftPoints; index += 1) {
+    const value = getWindowValue(windowName, index, fftPoints);
+    sum += value;
+    squaredSum += value * value;
+  }
+  return sampleRate * squaredSum / (sum * sum);
+}
+
+function calculatePhaseToStrainK({ mode, wavelength, refractiveIndex, gaugeLength, photoelasticCoefficient, manualK }) {
+  if (mode === 'manual') return manualK;
+  return (wavelength * 1e-9 / (4 * Math.PI * refractiveIndex * gaugeLength * photoelasticCoefficient)) * 1e12;
+}
+
+function inputLinearValue(value, representation, spectrumType) {
+  if (representation === 'linear') return value;
+  const divisor = spectrumType === 'psd' ? 10 : 20;
+  return 10 ** (value / divisor);
+}
+
+function dbValue(value, spectrumType) {
+  if (value === 0) return -Infinity;
+  const divisor = spectrumType === 'psd' ? 10 : 20;
+  return divisor * Math.log10(value);
+}
+
+function makeError(field, code) {
+  return { field, code };
+}
+
+function validateState(state) {
+  const errors = [];
+  const { input, analysis, das } = state;
+  const sampleRate = numberValue(analysis.sampleRate);
+  const fftPoints = numberValue(analysis.fftPoints);
+  const customEnbw = numberValue(analysis.customEnbw);
+  const wavelength = numberValue(das.wavelength);
+  const refractiveIndex = numberValue(das.refractiveIndex);
+  const gaugeLength = numberValue(das.gaugeLength);
+  const photoelasticCoefficient = numberValue(das.photoelasticCoefficient);
+  const manualK = numberValue(das.manualK);
+  const inputValue = numberValue(input.value);
+  const frequency = input.frequency === '' ? null : numberValue(input.frequency);
+
+  if (!SPECTRUM_TYPES.has(input.spectrumType)) errors.push(makeError('spectrumType', 'invalidChoice'));
+  if (!QUANTITIES.has(input.physicalQuantity)) errors.push(makeError('physicalQuantity', 'invalidChoice'));
+  if (!REPRESENTATIONS.has(input.representation)) errors.push(makeError('representation', 'invalidChoice'));
+  if (!Number.isFinite(inputValue) || (input.representation === 'linear' && inputValue < 0)) errors.push(makeError('value', 'invalidInput'));
+  if (!isPositiveFinite(sampleRate)) errors.push(makeError('sampleRate', 'mustBePositive'));
+  if (!Number.isInteger(fftPoints) || fftPoints < 2) errors.push(makeError('fftPoints', 'invalidFftPoints'));
+  if (!Object.prototype.hasOwnProperty.call(WINDOW_NAMES, analysis.window)) errors.push(makeError('window', 'invalidChoice'));
+  if (analysis.window === 'custom' && !isPositiveFinite(customEnbw)) errors.push(makeError('customEnbw', 'mustBePositive'));
+  if (!isPositiveFinite(wavelength)) errors.push(makeError('wavelength', 'mustBePositive'));
+  if (!isPositiveFinite(refractiveIndex)) errors.push(makeError('refractiveIndex', 'mustBePositive'));
+  if (!isPositiveFinite(gaugeLength)) errors.push(makeError('gaugeLength', 'mustBePositive'));
+  if (!isPositiveFinite(photoelasticCoefficient)) errors.push(makeError('photoelasticCoefficient', 'mustBePositive'));
+  if (das.mode === 'manual' && !isPositiveFinite(manualK)) errors.push(makeError('manualK', 'mustBePositive'));
+  if (frequency !== null && (!Number.isFinite(frequency) || frequency < 0)) errors.push(makeError('frequency', 'invalidFrequency'));
+
+  if (errors.length > 0) return { valid: false, errors };
+
+  if (frequency === 0 || (fftPoints % 2 === 0 && frequency !== null && Math.abs(frequency - sampleRate / 2) <= Math.max(1, sampleRate) * 1e-12)) {
+    return { valid: false, errors: [makeError('frequency', 'unsupportedSpecialFrequency')] };
+  }
+
+  const enbw = calculateEnbw(sampleRate, fftPoints, analysis.window, customEnbw);
+  const k = calculatePhaseToStrainK({ mode: das.mode, wavelength, refractiveIndex, gaugeLength, photoelasticCoefficient, manualK });
+  return { valid: true, errors: [], sampleRate, fftPoints, customEnbw, wavelength, refractiveIndex, gaugeLength, photoelasticCoefficient, manualK, inputValue, frequency, enbw, k };
+}
+
+function canonicalPsdFromInput(state) {
+  const checked = validateState(state);
+  if (!checked.valid) return { ...checked, phasePsd: null };
+  const { input } = state;
+  const nativeLinear = inputLinearValue(checked.inputValue, input.representation, input.spectrumType);
+  const phaseLinear = input.physicalQuantity === 'strain'
+    ? nativeLinear / (input.spectrumType === 'psd' ? checked.k ** 2 : checked.k)
+    : nativeLinear;
+  let phasePsd;
+  switch (input.spectrumType) {
+    case 'peak': phasePsd = (phaseLinear / Math.SQRT2) ** 2 / checked.enbw; break;
+    case 'rms': phasePsd = phaseLinear ** 2 / checked.enbw; break;
+    case 'psd': phasePsd = phaseLinear; break;
+    case 'asd': phasePsd = phaseLinear ** 2; break;
+    default: phasePsd = NaN;
+  }
+  return { ...checked, phasePsd };
+}
+
+function valuesFromPhasePsd(phasePsd, enbw, k) {
+  const phase = {
+    psd: phasePsd,
+    asd: Math.sqrt(phasePsd),
+    rms: Math.sqrt(phasePsd * enbw),
+    peak: Math.sqrt(2 * phasePsd * enbw),
+  };
+  const strain = {
+    psd: phase.psd * k ** 2,
+    asd: phase.asd * k,
+    rms: phase.rms * k,
+    peak: phase.peak * k,
+  };
+  return { phase, strain };
+}
+
+function calculateAll(state) {
+  const canonical = canonicalPsdFromInput(state);
+  if (!canonical.valid) return canonical;
+  return { ...canonical, values: valuesFromPhasePsd(canonical.phasePsd, canonical.enbw, canonical.k) };
+}
+
+function convertedInputValue(phasePsd, state, enbw, k) {
+  const values = valuesFromPhasePsd(phasePsd, enbw, k);
+  const linear = values[state.input.physicalQuantity][state.input.spectrumType];
+  return state.input.representation === 'db' ? dbValue(linear, state.input.spectrumType) : linear;
+}
+
+function unitFor(quantity, spectrumType) {
+  const base = quantity === 'phase' ? 'rad' : 'pε';
+  if (spectrumType === 'psd') return `${base}²/Hz`;
+  if (spectrumType === 'asd') return `${base}/√Hz`;
+  return base;
+}
+
+// A classic script global keeps the app functional when index.html is opened
+// directly from disk (file://), where Chrome blocks external ES module imports.
+window.DASCalculator = Object.freeze({
+  DEFAULTS,
+  WINDOW_NAMES,
+  cloneDefaults,
+  numberValue,
+  isPositiveFinite,
+  getWindowValue,
+  calculateEnbw,
+  calculatePhaseToStrainK,
+  inputLinearValue,
+  dbValue,
+  validateState,
+  canonicalPsdFromInput,
+  valuesFromPhasePsd,
+  calculateAll,
+  convertedInputValue,
+  unitFor,
+});
+
+</script>
+    <script>
+(function () {
+const {
+  DEFAULTS,
+  WINDOW_NAMES,
+  calculateAll,
+  cloneDefaults,
+  convertedInputValue,
+  dbValue,
+  unitFor,
+} = window.DASCalculator;
+
+const STORAGE_KEY = 'das-spectrum-converter-v1';
+const text = {
+  zh: {
+    subtitle: '单频点频谱与自噪声换算', language: '语言', reset: '重置默认参数',
+    scopeNote: '适用于已正确归一化的实数信号单边普通正频率内部频点。DC 与 Nyquist 频点暂不支持。',
+    spectrumInput: '频谱输入', inputSpectrumType: '输入频谱类型', inputQuantity: '输入物理量', inputValue: '输入数值', inputDisplay: '输入表示方式', targetFrequency: '目标频率',
+    spectrumParameters: '频谱参数', sampleRate: '采样率 fs', fftPoints: 'FFT 原始数据点数 N', points: '点', window: '窗函数', customEnbw: '自定义 ENBW',
+    dasParameters: 'DAS 参数', conversionMode: '转换模式', theoryMode: '理论参数计算', manualMode: '手动标定系数', wavelength: '工作波长 λ', refractiveIndex: '有效折射率 n', gaugeLength: '解调标距 G', photoelastic: '光弹性系数 ξ', manualK: '手动 K', phaseStrainCoefficient: '相位—应变系数 K',
+    liveResults: 'LIVE RESULTS', conversionResults: '实时换算结果', resultDisplay: '结果主显示', copyAll: '复制全部结果', parameterSummary: '参数摘要', formulaTitle: '计算公式与约定', formulaNote: '以线性相位 PSD（rad²/Hz）作为内部中间量。PSD 的物理量转换使用 K²；幅度与 ASD 使用 K。',
+    phase: '相位', strain: '应变', peak: '幅度 Peak', rms: '幅度 RMS', psd: '功率谱密度 PSD', asd: '幅度谱密度 ASD', copy: '复制', copied: '已复制到剪贴板', copyFailed: '无法复制，请手动选择内容。',
+    linear: '线性', db: 'dB', theoretical: '理论', manual: '手动', invalidInput: '请输入有效数值；线性频谱数值不得为负。', mustBePositive: '此参数必须为正数。', invalidFftPoints: 'FFT 点数必须是不小于 2 的整数。', invalidFrequency: '目标频率必须为非负数。', unsupportedSpecialFrequency: 'DC 与 Nyquist 频点不适用当前 √2 换算；V1 暂不支持该频点。', invalidChoice: '请选择有效的选项。',
+    saved: '已自动保存有效参数。', sampleSummary: '采样率', pointsSummary: 'FFT 点数', deltaSummary: '频率间隔 Δf', windowSummary: '窗函数', enbwSummary: 'ENBW', coefficientSummary: '转换系数 K', conventionSummary: '归一化约定', conventionValue: '单边、普通正频率内部频点', modeSummary: '转换模式', formulaWindow: '周期窗', optional: '可选',
+    typeLabels: { peak: '幅度 Peak', rms: '幅度 RMS', psd: '功率谱密度 PSD', asd: '幅度谱密度 ASD' },
+    quantityLabels: { phase: '相位', strain: '应变' },
+  },
+  en: {
+    subtitle: 'Single-bin spectrum & self-noise converter', language: 'Language', reset: 'Reset defaults',
+    scopeNote: 'For correctly normalized, real-valued, single-sided ordinary positive-frequency bins. DC and Nyquist are not supported in V1.',
+    spectrumInput: 'Spectrum input', inputSpectrumType: 'Input spectrum type', inputQuantity: 'Input quantity', inputValue: 'Input value', inputDisplay: 'Input representation', targetFrequency: 'Target frequency',
+    spectrumParameters: 'Spectrum parameters', sampleRate: 'Sample rate fs', fftPoints: 'Raw FFT points N', points: 'points', window: 'Window function', customEnbw: 'Custom ENBW',
+    dasParameters: 'DAS parameters', conversionMode: 'Conversion mode', theoryMode: 'Theoretical parameters', manualMode: 'Manual calibration', wavelength: 'Wavelength λ', refractiveIndex: 'Effective refractive index n', gaugeLength: 'Gauge length G', photoelastic: 'Photoelastic coefficient ξ', manualK: 'Manual K', phaseStrainCoefficient: 'Phase–strain coefficient K',
+    liveResults: 'LIVE RESULTS', conversionResults: 'Converted results', resultDisplay: 'Primary display', copyAll: 'Copy all results', parameterSummary: 'Parameter summary', formulaTitle: 'Formulas & conventions', formulaNote: 'Linear phase PSD (rad²/Hz) is the internal intermediate. PSD quantity conversion uses K²; magnitude and ASD use K.',
+    phase: 'Phase', strain: 'Strain', peak: 'Magnitude Peak', rms: 'Magnitude RMS', psd: 'Power Spectral Density', asd: 'Amplitude Spectral Density', copy: 'Copy', copied: 'Copied to clipboard', copyFailed: 'Copy failed; please select the text manually.',
+    linear: 'Linear', db: 'dB', theoretical: 'Theoretical', manual: 'Manual', invalidInput: 'Enter a valid number; linear spectrum values cannot be negative.', mustBePositive: 'This parameter must be positive.', invalidFftPoints: 'FFT points must be an integer of at least 2.', invalidFrequency: 'Target frequency must be non-negative.', unsupportedSpecialFrequency: 'DC and Nyquist bins do not use the current √2 conversion; they are not supported in V1.', invalidChoice: 'Select a valid option.',
+    saved: 'Valid parameters are saved automatically.', sampleSummary: 'Sample rate', pointsSummary: 'FFT points', deltaSummary: 'Frequency spacing Δf', windowSummary: 'Window', enbwSummary: 'ENBW', coefficientSummary: 'Coefficient K', conventionSummary: 'Normalization', conventionValue: 'single-sided ordinary positive-frequency bin', modeSummary: 'Mode', formulaWindow: 'periodic window', optional: 'Optional',
+    typeLabels: { peak: 'Magnitude Peak', rms: 'Magnitude RMS', psd: 'Power Spectral Density', asd: 'Amplitude Spectral Density' },
+    quantityLabels: { phase: 'Phase', strain: 'Strain' },
+  },
+};
+
+const ids = ['spectrumType', 'physicalQuantity', 'inputValue', 'representation', 'frequency', 'sampleRate', 'fftPoints', 'window', 'customEnbw', 'wavelength', 'refractiveIndex', 'gaugeLength', 'photoelasticCoefficient', 'manualK'];
+const dom = {};
+ids.forEach(function (id) { dom[id] = document.getElementById(id); });
+const languageSelect = document.getElementById('language');
+const status = document.getElementById('status');
+let language = 'zh';
+let lastGoodPsd = null;
+let noticeTimer = null;
+let resultRepresentation = 'linear';
+
+function t(key) { return text[language][key] != null ? text[language][key] : key; }
+function currentMode() { return document.querySelector('input[name="dasMode"]:checked').value; }
+
+function stateFromDom() {
+  return {
+    input: { spectrumType: dom.spectrumType.value, physicalQuantity: dom.physicalQuantity.value, value: dom.inputValue.value, representation: dom.representation.value, frequency: dom.frequency.value.trim() },
+    analysis: { sampleRate: dom.sampleRate.value, fftPoints: dom.fftPoints.value, window: dom.window.value, customEnbw: dom.customEnbw.value },
+    das: { mode: currentMode(), wavelength: dom.wavelength.value, refractiveIndex: dom.refractiveIndex.value, gaugeLength: dom.gaugeLength.value, photoelasticCoefficient: dom.photoelasticCoefficient.value, manualK: dom.manualK.value },
+  };
+}
+
+function applyState(state) {
+  dom.spectrumType.value = state.input.spectrumType;
+  dom.physicalQuantity.value = state.input.physicalQuantity;
+  dom.inputValue.value = state.input.value;
+  dom.representation.value = state.input.representation;
+  dom.frequency.value = state.input.frequency;
+  dom.sampleRate.value = state.analysis.sampleRate;
+  dom.fftPoints.value = state.analysis.fftPoints;
+  dom.window.value = state.analysis.window;
+  dom.customEnbw.value = state.analysis.customEnbw;
+  dom.wavelength.value = state.das.wavelength;
+  dom.refractiveIndex.value = state.das.refractiveIndex;
+  dom.gaugeLength.value = state.das.gaugeLength;
+  dom.photoelasticCoefficient.value = state.das.photoelasticCoefficient;
+  dom.manualK.value = state.das.manualK;
+  document.querySelector(`input[name="dasMode"][value="${state.das.mode}"]`).checked = true;
+}
+
+function setStatus(message, kind = 'error') {
+  clearTimeout(noticeTimer);
+  status.textContent = message;
+  status.dataset.kind = kind;
+  if (kind === 'success') noticeTimer = setTimeout(() => { status.textContent = ''; }, 2200);
+}
+
+function formatNumber(value) {
+  if (value === -Infinity) return '−∞';
+  if (!Number.isFinite(value)) return '—';
+  if (value === 0) return '0';
+  const absolute = Math.abs(value);
+  if (absolute < 1e-4 || absolute >= 1e6) return value.toExponential(7).replace(/\.?(0+)e/, 'e');
+  return Number(value.toPrecision(8)).toString();
+}
+
+function outputValue(value, spectrumType, representation, unit) {
+  const db = dbValue(value, spectrumType);
+  if (representation === 'db') return { primary: `${formatNumber(db)} dB re 1 ${unit}`, secondary: `${formatNumber(value)} ${unit}` };
+  return { primary: `${formatNumber(value)} ${unit}`, secondary: `${formatNumber(db)} dB re 1 ${unit}` };
+}
+
+function persist(state) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ language, resultRepresentation, state })); } catch (error) { /* local files can disable storage */ }
+}
+
+function loadSaved() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (saved && saved.state && saved.state.input && saved.state.analysis && saved.state.das) {
+      language = saved.language === 'en' ? 'en' : 'zh';
+      resultRepresentation = saved.resultRepresentation === 'db' || saved.resultRepresentation === 'linear'
+        ? saved.resultRepresentation
+        : saved.state.input.representation;
+      return saved.state;
+    }
+  } catch (error) { /* use defaults */ }
+  return cloneDefaults();
+}
+
+function updateLanguage() {
+  document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
+  languageSelect.value = language;
+  document.querySelectorAll('[data-i18n]').forEach((node) => { node.textContent = t(node.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-label]').forEach((node) => { node.setAttribute('aria-label', t(node.dataset.i18nLabel)); });
+  dom.frequency.placeholder = t('optional');
+  [...dom.spectrumType.options].forEach((option) => { option.textContent = t('typeLabels')[option.value]; });
+  dom.physicalQuantity.options[0].textContent = `${t('phase')} · rad`;
+  dom.physicalQuantity.options[1].textContent = `${t('strain')} · pε`;
+  dom.representation.options[0].textContent = t('linear');
+  dom.representation.options[1].textContent = t('db');
+  const windowOptions = { rectangular: 'Rectangular', hann: 'Hann', hamming: 'Hamming', blackman: 'Blackman', blackmanHarris: 'Blackman-Harris (4-term)', custom: language === 'zh' ? '自定义 ENBW' : 'Custom ENBW' };
+  [...dom.window.options].forEach((option) => { option.textContent = windowOptions[option.value]; });
+}
+
+function updateResultDisplaySwitch() {
+  document.querySelectorAll('[data-result-display]').forEach((button) => {
+    button.setAttribute('aria-pressed', String(button.dataset.resultDisplay === resultRepresentation));
+  });
+}
+
+function syncDynamicControls() {
+  const manual = currentMode() === 'manual';
+  document.getElementById('manualKField').classList.toggle('hidden', !manual);
+  ['wavelength', 'refractiveIndex', 'gaugeLength', 'photoelasticCoefficient'].forEach((id) => { dom[id].disabled = manual; });
+  document.getElementById('customEnbwField').classList.toggle('hidden', dom.window.value !== 'custom');
+  const state = stateFromDom();
+  document.getElementById('inputUnit').textContent = state.input.representation === 'db' ? 'dB re 1' : unitFor(state.input.physicalQuantity, state.input.spectrumType);
+}
+
+function renderResults(state, calculation) {
+  const results = document.getElementById('results');
+  if (!calculation.valid) {
+    results.innerHTML = '';
+    document.getElementById('parameterSummary').innerHTML = '<span>—</span><span>—</span>';
+    return;
+  }
+  const rows = ['peak', 'rms', 'psd', 'asd'];
+  results.innerHTML = ['phase', 'strain'].map((quantity) => {
+    const title = `${t('quantityLabels')[quantity]} · ${quantity === 'phase' ? 'rad' : 'pε'}`;
+    return `<section class="result-column"><header class="column-title"><strong>${title}</strong><small>${quantity === 'phase' ? 'φ' : 'ε'}</small></header>${rows.map((type) => {
+      const unit = unitFor(quantity, type);
+      const shown = outputValue(calculation.values[quantity][type], type, resultRepresentation, unit);
+      const raw = shown.primary;
+      return `<div class="result-row ${type === 'asd' ? 'asd' : ''}"><div class="result-name">${t(type)}<small>${unit}</small></div><div class="result-value"><strong>${shown.primary}</strong><small>${shown.secondary}</small></div><button class="copy-result" type="button" data-copy="${encodeURIComponent(raw)}">${t('copy')}</button></div>`;
+    }).join('')}</section>`;
+  }).join('');
+  results.querySelectorAll('[data-copy]').forEach((button) => button.addEventListener('click', () => copyText(decodeURIComponent(button.dataset.copy))));
+}
+
+function renderSummary(state, calculation) {
+  const summary = document.getElementById('parameterSummary');
+  if (!calculation.valid) return;
+  const pairs = [
+    [t('sampleSummary'), `${formatNumber(calculation.sampleRate)} Hz`], [t('pointsSummary'), `${formatNumber(calculation.fftPoints)}`],
+    [t('deltaSummary'), `${formatNumber(calculation.sampleRate / calculation.fftPoints)} Hz`], [t('windowSummary'), `${WINDOW_NAMES[state.analysis.window]} (${t('formulaWindow')})`],
+    [t('enbwSummary'), `${formatNumber(calculation.enbw)} Hz`], [t('coefficientSummary'), `${formatNumber(calculation.k)} pε/rad`],
+    [t('modeSummary'), state.das.mode === 'manual' ? t('manual') : t('theoretical')], [t('conventionSummary'), t('conventionValue')],
+  ];
+  summary.innerHTML = pairs.map(([label, value]) => `<span>${label}</span><span>${value}</span>`).join('');
+}
+
+function render() {
+  updateLanguage();
+  updateResultDisplaySwitch();
+  syncDynamicControls();
+  const state = stateFromDom();
+  const calculation = calculateAll(state);
+  const messages = calculation.errors ? calculation.errors.map(function (error) { return t(error.code); }) : [];
+  if (!calculation.valid) {
+    setStatus([...new Set(messages)].join(' '));
+    document.getElementById('deltaF').textContent = '—';
+    document.getElementById('enbw').textContent = '—';
+    document.getElementById('phaseStrainK').textContent = '—';
+    document.getElementById('analysisSummary').textContent = '—';
+    document.getElementById('kSummary').textContent = '—';
+    renderResults(state, calculation);
+    return;
+  }
+  status.textContent = '';
+  status.dataset.kind = '';
+  lastGoodPsd = calculation.phasePsd;
+  const deltaF = calculation.sampleRate / calculation.fftPoints;
+  document.getElementById('deltaF').textContent = formatNumber(deltaF);
+  document.getElementById('enbw').textContent = formatNumber(calculation.enbw);
+  document.getElementById('phaseStrainK').textContent = formatNumber(calculation.k);
+  document.getElementById('analysisSummary').textContent = `Δf ${formatNumber(deltaF)} Hz · ENBW ${formatNumber(calculation.enbw)} Hz`;
+  document.getElementById('kSummary').textContent = `K ${formatNumber(calculation.k)} pε/rad`;
+  renderResults(state, calculation);
+  renderSummary(state, calculation);
+  persist(state);
+}
+
+function preserveSpectrumThenRender() {
+  const state = stateFromDom();
+  const calculated = calculateAll(state);
+  if (lastGoodPsd !== null && calculated.valid) {
+    dom.inputValue.value = formatNumber(convertedInputValue(lastGoodPsd, state, calculated.enbw, calculated.k));
+  }
+  render();
+}
+
+async function copyText(value) {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(value);
+    else throw new Error('Clipboard API unavailable');
+    setStatus(t('copied'), 'success');
+  } catch (error) {
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed'; textarea.style.opacity = '0';
+    document.body.append(textarea); textarea.select();
+    const copied = document.execCommand('copy');
+    textarea.remove();
+    setStatus(copied ? t('copied') : t('copyFailed'), copied ? 'success' : 'error');
+  }
+}
+
+function copyAll() {
+  const state = stateFromDom();
+  const calculation = calculateAll(state);
+  if (!calculation.valid) return;
+  const lines = ['DAS Spectrum Converter'];
+  for (const quantity of ['phase', 'strain']) {
+    lines.push(`\n${t('quantityLabels')[quantity]}:`);
+    for (const type of ['peak', 'rms', 'psd', 'asd']) {
+      const unit = unitFor(quantity, type);
+      const result = outputValue(calculation.values[quantity][type], type, resultRepresentation, unit);
+      lines.push(`${t(type)}: ${result.primary}`);
+    }
+  }
+  lines.push(`\n${t('sampleSummary')}: ${formatNumber(calculation.sampleRate)} Hz`);
+  lines.push(`${t('pointsSummary')}: ${calculation.fftPoints}`);
+  lines.push(`${t('enbwSummary')}: ${formatNumber(calculation.enbw)} Hz`);
+  lines.push(`${t('coefficientSummary')}: ${formatNumber(calculation.k)} pε/rad`);
+  copyText(lines.join('\n'));
+}
+
+function handleChange(event) {
+  if (['spectrumType', 'physicalQuantity', 'representation'].includes(event.target.id)) preserveSpectrumThenRender();
+  else render();
+}
+
+for (const id of ids) {
+  dom[id].addEventListener('input', handleChange);
+  dom[id].addEventListener('change', handleChange);
+}
+document.querySelectorAll('input[name="dasMode"]').forEach((radio) => radio.addEventListener('change', render));
+languageSelect.addEventListener('change', () => { language = languageSelect.value; render(); });
+document.querySelectorAll('[data-result-display]').forEach((button) => button.addEventListener('click', () => { resultRepresentation = button.dataset.resultDisplay; render(); }));
+document.getElementById('copyAll').addEventListener('click', copyAll);
+document.getElementById('reset').addEventListener('click', () => { applyState(cloneDefaults()); lastGoodPsd = null; render(); });
+
+applyState(loadSaved());
+render();
+}());
+
+</script>
+  </body>
+</html>
